@@ -180,7 +180,6 @@ func doQuery(qname, qtype, qclass string, use_tcp bool) (response *dns.Msg, serv
 	}
 
 	for retries > 0 {
-
 		response, server, rtt, err = sendRequest(m, false, timeout)
 		if err == nil {
 			break
@@ -197,7 +196,6 @@ func doQuery(qname, qtype, qclass string, use_tcp bool) (response *dns.Msg, serv
 	}
 
 	return response, server, rtt, err
-
 }
 
 /*
@@ -223,10 +221,12 @@ func sendRequest(m *dns.Msg, use_tcp bool, timeout time.Duration) (response *dns
 }
 
 /*
- * printResponse() - print info about a DNS response
+ * processResponse() - process info about a DNS response. Successful
+ *                     responses are entered into the sqlite database.
+ *                     Failures are printed to stdout.
  */
 
-func printResponse(db *sql.DB, stmt *sql.Stmt, r *ResponseInfo) {
+func processResponse(db *sql.DB, stmt *sql.Stmt, r *ResponseInfo) {
 
 	if r.err != nil && !r.truncated {
 		fmt.Printf("ERROR: %s %s %s Query fail: %s\n", r.zone, r.service, r.qname, r.err)
@@ -335,7 +335,9 @@ func queryWebTLSA(zone, prefix string, port uint16) {
 }
 
 /*
- * queryTLSA()
+ * queryTLSA() - send DNS TLSA query, populate ResponseInfo structure,
+ *               and write it to the results channel. The results 
+ *               channel is read by the main goroutine in runBatchFile().
  */
 
 func queryTLSA(zone, service string, port uint16, proto, base string) {
@@ -422,22 +424,9 @@ func runBatchFile(batchfile string, db *sql.DB, stmt *sql.Stmt) {
 	}()
 
 	for r := range results {
-		printResponse(db, stmt, r)
+		processResponse(db, stmt, r)
 	}
 	return
-}
-
-/*
- * initialize()
- */
-
-func initialize() {
-
-	log.SetFlags(0)
-	// Per RFC 6891, use mnemonic "BADVERS" for rcode 16.
-	dns.RcodeToString[16] = "BADVERS"
-	return
-
 }
 
 /*
@@ -448,7 +437,7 @@ func main() {
 
 	var err error
 
-	initialize()
+	log.SetFlags(0)
 	parseArgs(os.Args[1:])
 
 	tokens = make(chan struct{}, int(numParallel))
