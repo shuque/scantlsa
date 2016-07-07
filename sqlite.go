@@ -14,6 +14,16 @@ import (
  * Database Schema and Indices
  */
 
+var SCHEMA_INFO = `
+CREATE TABLE info
+   (infile text,
+    dbfile text,
+    resolver text,
+    threads int,
+    start int,
+    elapsed int);
+`
+
 var SCHEMA_TLSA = `
 CREATE TABLE tlsa
    (zone text,
@@ -55,7 +65,7 @@ CREATE UNIQUE INDEX if not exists dnssec_uniq ON dnssec (zone, flags, proto, alg
  * createDB() - create sqlite3 database to hold TLSA scan results
  */
 
-func createDB(dbname string) (*sql.DB, *sql.Stmt) {
+func createDB(dbname string) (db *sql.DB, stmt *sql.Stmt) {
 
 	os.Remove(dbname)
 	os.Remove(dbname + "-journal")
@@ -65,14 +75,13 @@ func createDB(dbname string) (*sql.DB, *sql.Stmt) {
 		log.Fatal(err)
 	}
 
-	sqlStmt := SCHEMA_TLSA + INDEX_TLSA
-
+	sqlStmt := SCHEMA_INFO + SCHEMA_TLSA + INDEX_TLSA
 	_, err = db.Exec(sqlStmt)
 	if err != nil {
 		log.Fatal("%q: %s\n", err, sqlStmt)
 	}
 
-	stmt, err := db.Prepare("insert into tlsa values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+	stmt, err = db.Prepare("insert into tlsa values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -103,6 +112,24 @@ func insertDB(db *sql.DB, stmt *sql.Stmt, r *ResponseInfo, tlsa *dns.TLSA) bool 
 	if err != nil {
 		fmt.Printf("Insert error for %v %v: %s\n", r, tlsa, err)
 		return false
+	}
+
+	return true
+}
+
+/*
+ * recordMetaInfo()
+ */
+
+func recordMetaInfo(db *sql.DB, start time.Time, elapsed time.Duration) bool {
+
+	sqlStmt := "insert into info(infile, dbfile, resolver, threads, start, elapsed)" +
+		"values(?, ?, ?, ?, ?, ?)"
+	_, err := db.Exec(sqlStmt, realPath(Options.batchfile),
+		realPath(Options.dbfile), Options.servers[0], numParallel,
+		start.Unix(), elapsed.Seconds())
+	if err != nil {
+		log.Fatal("%q: %s\n", err, sqlStmt)
 	}
 
 	return true

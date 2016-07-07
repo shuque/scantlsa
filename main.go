@@ -430,6 +430,20 @@ func runBatchFile(batchfile string, db *sql.DB, stmt *sql.Stmt) {
 }
 
 /*
+ * realPath()
+ */
+
+func realPath(filename string) string {
+
+	if path.IsAbs(filename) {
+		return filename
+	} else {
+		cwd, _ := os.Getwd()
+		return path.Join(cwd, path.Dir(filename), path.Base(filename))
+	}
+}
+
+/*
  * main()
  */
 
@@ -469,6 +483,7 @@ func main() {
 	runBatchFile(Options.batchfile, db, stmt)
 	elapsedTime := time.Since(t0)
 	fmt.Printf("\nElapsed time: %s\n", elapsedTime.String())
+	_ = recordMetaInfo(db, t0, elapsedTime)
 
 	return
 
