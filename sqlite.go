@@ -129,7 +129,8 @@ func recordMetaInfo(db *sql.DB, start time.Time, elapsed time.Duration) bool {
 		realPath(Options.dbfile), Options.servers[0], numParallel,
 		start.Unix(), elapsed.Seconds())
 	if err != nil {
-		log.Fatal("%q: %s\n", err, sqlStmt)
+		fmt.Printf("Error recording metainfo: %q: %s\n", err, sqlStmt)
+		return false
 	}
 
 	return true

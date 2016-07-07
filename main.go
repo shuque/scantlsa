@@ -439,7 +439,7 @@ func realPath(filename string) string {
 		return filename
 	} else {
 		cwd, _ := os.Getwd()
-		return path.Join(cwd, path.Dir(filename), path.Base(filename))
+		return path.Join(cwd, filename)
 	}
 }
 
