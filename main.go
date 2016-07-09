@@ -185,7 +185,7 @@ func doQuery(qname, qtype, qclass string, use_tcp bool) (response *dns.Msg, serv
 		if err == nil {
 			break
 		}
-		if err == dns.ErrId {      // id mismatch -> retry
+		if err == dns.ErrId {
             retries--
             continue
         }
