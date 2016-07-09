@@ -15,7 +15,7 @@ import (
 	"time"
 )
 
-var Version string = "0.10"
+var Version string = "0.11"
 var Progname string = path.Base(os.Args[0])
 
 /*
@@ -270,6 +270,17 @@ func processResponse(db *sql.DB, stmt *sql.Stmt, r *ResponseInfo) {
 }
 
 /*
+ * queryWildCardTLSA()
+ */
+
+func queryWildCardTLSA(zone string) {
+
+	queryTLSA(zone, "wild", 0, "tcp", zone)
+	queryTLSA(zone, "wild", 0, "", zone)
+	return
+}
+
+/*
  * queryXmppTLSA()
  */
 
@@ -309,12 +320,14 @@ func queryMailTLSA(zone string) {
 		len(response.Answer) == 0 {
 		queryTLSA(zone, "smtp", 25, "tcp", zone)
 		queryTLSA(zone, "smtp", 465, "tcp", zone)
+		queryTLSA(zone, "smtp", 587, "tcp", zone)
 		return
 	}
 	for _, rr := range response.Answer {
 		if mx, ok := rr.(*dns.MX); ok {
 			queryTLSA(zone, "smtp", 25, "tcp", mx.Mx)
 			queryTLSA(zone, "smtp", 465, "tcp", mx.Mx)
+			queryTLSA(zone, "smtp", 587, "tcp", mx.Mx)
 		}
 	}
 	return
@@ -342,7 +355,17 @@ func queryWebTLSA(zone, prefix string, port uint16) {
 
 func queryTLSA(zone, service string, port uint16, proto, base string) {
 
-	qname := fmt.Sprintf("_%d._%s.%s", port, proto, base)
+	var qname string
+
+	if service == "wild" {
+		if proto == "" {
+			qname = fmt.Sprintf("*.%s", base)
+		} else {
+			qname = fmt.Sprintf("*._%s.%s", proto, base)
+		}
+	} else {
+		qname = fmt.Sprintf("_%d._%s.%s", port, proto, base)
+	}
 
 	r := new(ResponseInfo)
 	r.zone, r.service = zone, service
@@ -378,6 +401,7 @@ func queryZone(zone string) {
 	queryWebTLSA(zone, "www", 443)
 	queryMailTLSA(zone)
 	queryXmppTLSA(zone)
+	queryWildCardTLSA(zone)
 
 	<-tokens // Release token.
 
