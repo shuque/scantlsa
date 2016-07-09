@@ -283,10 +283,31 @@ func queryWildCardTLSA(w *sync.WaitGroup, zone string) {
 }
 
 /*
- * queryXmppTLSA()
+ * queryXmppServerTLSA()
  */
 
-func queryXmppTLSA(w *sync.WaitGroup, zone string) {
+func queryXmppServerTLSA(w *sync.WaitGroup, zone string) {
+
+	defer (*w).Done()
+
+	response, _, _, err := doQuery("_xmpp-server._tcp."+zone, "SRV", "IN", false)
+	if err == nil && response.MsgHdr.Rcode == 0 &&
+		len(response.Answer) != 0 {
+		for _, rr := range response.Answer {
+			if srv, ok := rr.(*dns.SRV); ok {
+				queryTLSA(zone, "xmpp-server", srv.Port, "tcp", srv.Target)
+			}
+		}
+	}
+
+	return
+}
+
+/*
+ * queryXmppClientTLSA()
+ */
+
+func queryXmppClientTLSA(w *sync.WaitGroup, zone string) {
 
 	defer (*w).Done()
 
@@ -296,16 +317,6 @@ func queryXmppTLSA(w *sync.WaitGroup, zone string) {
 		for _, rr := range response.Answer {
 			if srv, ok := rr.(*dns.SRV); ok {
 				queryTLSA(zone, "xmpp-client", srv.Port, "tcp", srv.Target)
-			}
-		}
-	}
-
-	response, _, _, err = doQuery("_xmpp-server._tcp."+zone, "SRV", "IN", false)
-	if err == nil && response.MsgHdr.Rcode == 0 &&
-		len(response.Answer) != 0 {
-		for _, rr := range response.Answer {
-			if srv, ok := rr.(*dns.SRV); ok {
-				queryTLSA(zone, "xmpp-server", srv.Port, "tcp", srv.Target)
 			}
 		}
 	}
@@ -326,14 +337,14 @@ func queryMailTLSA(w *sync.WaitGroup, zone string) {
 		len(response.Answer) == 0 {
 		queryTLSA(zone, "smtp", 25, "tcp", zone)
 		queryTLSA(zone, "smtp", 465, "tcp", zone)
-		queryTLSA(zone, "smtp", 587, "tcp", zone)
+		queryTLSA(zone, "submission", 587, "tcp", zone)
 		return
 	}
 	for _, rr := range response.Answer {
 		if mx, ok := rr.(*dns.MX); ok {
 			queryTLSA(zone, "smtp", 25, "tcp", mx.Mx)
 			queryTLSA(zone, "smtp", 465, "tcp", mx.Mx)
-			queryTLSA(zone, "smtp", 587, "tcp", mx.Mx)
+			queryTLSA(zone, "submission", 587, "tcp", mx.Mx)
 		}
 	}
 	return
@@ -407,11 +418,12 @@ func queryZone(zone string) {
 	defer wg.Done()
 	var wg2 sync.WaitGroup
 
-	wg2.Add(5)
+	wg2.Add(6)
 	go queryWebTLSA(&wg2, zone, "", 443)
 	go queryWebTLSA(&wg2, zone, "www", 443)
 	go queryMailTLSA(&wg2, zone)
-	go queryXmppTLSA(&wg2, zone)
+	go queryXmppServerTLSA(&wg2, zone)
+	go queryXmppClientTLSA(&wg2, zone)
 	go queryWildCardTLSA(&wg2, zone)
 	wg2.Wait()
 
