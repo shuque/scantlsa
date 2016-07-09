@@ -185,13 +185,13 @@ func doQuery(qname, qtype, qclass string, use_tcp bool) (response *dns.Msg, serv
 		if err == nil {
 			break
 		}
-		if err == dns.ErrId {
-            retries--
-            continue
-        }
+		if err == dns.ErrId { // ignore txid mismatch
+			retries--
+			continue
+		}
 		if nerr, ok := err.(net.Error); ok && !nerr.Timeout() {
-            break
-        }
+			break
+		}
 		retries--
 	}
 
