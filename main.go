@@ -270,15 +270,24 @@ func processResponse(db *sql.DB, stmt *sql.Stmt, r *ResponseInfo) {
 }
 
 /*
- * queryWildCardTLSA()
+ * queryWildCardTLSA0()
  */
 
-func queryWildCardTLSA(w *sync.WaitGroup, zone string) {
+func queryWildCardTLSA0(w *sync.WaitGroup, zone string) {
 
 	defer (*w).Done()
-
-	queryTLSA(zone, "wild", 0, "tcp", zone)
 	queryTLSA(zone, "wild", 0, "", zone)
+	return
+}
+
+/*
+ * queryWildCardTLSA1()
+ */
+
+func queryWildCardTLSA1(w *sync.WaitGroup, zone string) {
+
+	defer (*w).Done()
+	queryTLSA(zone, "wild", 0, "tcp", zone)
 	return
 }
 
@@ -418,13 +427,14 @@ func queryZone(zone string) {
 	defer wg.Done()
 	var wg2 sync.WaitGroup
 
-	wg2.Add(6)
+	wg2.Add(7)
 	go queryWebTLSA(&wg2, zone, "", 443)
 	go queryWebTLSA(&wg2, zone, "www", 443)
 	go queryMailTLSA(&wg2, zone)
 	go queryXmppServerTLSA(&wg2, zone)
 	go queryXmppClientTLSA(&wg2, zone)
-	go queryWildCardTLSA(&wg2, zone)
+	go queryWildCardTLSA0(&wg2, zone)
+	go queryWildCardTLSA1(&wg2, zone)
 	wg2.Wait()
 
 	<-tokens // Release token.
