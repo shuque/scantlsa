@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/miekg/dns"
 	"log"
+	"net"
 	"os"
 	"path"
 	"strconv"
@@ -22,7 +23,7 @@ var Progname string = path.Base(os.Args[0])
  * Default parameters and counters.
  */
 
-var TimeoutInitial time.Duration = time.Second * 2
+var TimeoutInitial time.Duration = time.Second * 3
 var TimeoutTCP time.Duration = time.Second * 5
 var Retries int = 3
 var BufsizeDefault uint16 = 4096
@@ -183,16 +184,15 @@ func doQuery(qname, qtype, qclass string, use_tcp bool) (response *dns.Msg, serv
 		response, server, rtt, err = sendRequest(m, false, timeout)
 		if err == nil {
 			break
-		} else {
-			// is there a better way to check for timeout error?
-			if !strings.Contains(err.Error(), "i/o timeout") {
-				break
-			}
-			retries--
-			if retries > 0 {
-				timeout = timeout * 2
-			}
 		}
+		if err == dns.ErrId {      // id mismatch -> retry
+            retries--
+            continue
+        }
+		if nerr, ok := err.(net.Error); ok && !nerr.Timeout() {
+            break
+        }
+		retries--
 	}
 
 	return response, server, rtt, err
@@ -334,7 +334,7 @@ func queryXmppClientTLSA(w *sync.WaitGroup, zone string) {
 }
 
 /*
- * queryMailTLSA()
+ * queryMailTLSA() - this should be decomposed and parallelized more.
  */
 
 func queryMailTLSA(w *sync.WaitGroup, zone string) {
