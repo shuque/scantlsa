@@ -15,7 +15,7 @@ import (
 	"time"
 )
 
-var Version string = "0.11"
+var Version string = "0.20"
 var Progname string = path.Base(os.Args[0])
 
 /*
@@ -29,7 +29,7 @@ var BufsizeDefault uint16 = 4096
 var MaxServers = 20
 var countZones = 0
 
-/* 
+/*
  * For goroutine communications and synchronization:
  *    wg: a sync counter to determine when last routine has ended.
  *    numParallel: the default number of concurrent queries we allow.
@@ -273,7 +273,9 @@ func processResponse(db *sql.DB, stmt *sql.Stmt, r *ResponseInfo) {
  * queryWildCardTLSA()
  */
 
-func queryWildCardTLSA(zone string) {
+func queryWildCardTLSA(w *sync.WaitGroup, zone string) {
+
+	defer (*w).Done()
 
 	queryTLSA(zone, "wild", 0, "tcp", zone)
 	queryTLSA(zone, "wild", 0, "", zone)
@@ -284,7 +286,9 @@ func queryWildCardTLSA(zone string) {
  * queryXmppTLSA()
  */
 
-func queryXmppTLSA(zone string) {
+func queryXmppTLSA(w *sync.WaitGroup, zone string) {
+
+	defer (*w).Done()
 
 	response, _, _, err := doQuery("_xmpp-client._tcp."+zone, "SRV", "IN", false)
 	if err == nil && response.MsgHdr.Rcode == 0 &&
@@ -313,7 +317,9 @@ func queryXmppTLSA(zone string) {
  * queryMailTLSA()
  */
 
-func queryMailTLSA(zone string) {
+func queryMailTLSA(w *sync.WaitGroup, zone string) {
+
+	defer (*w).Done()
 
 	response, _, _, err := doQuery(zone, "MX", "IN", false)
 	if err != nil || response.MsgHdr.Rcode != 0 ||
@@ -337,7 +343,9 @@ func queryMailTLSA(zone string) {
  * queryWebTLSA()
  */
 
-func queryWebTLSA(zone, prefix string, port uint16) {
+func queryWebTLSA(w *sync.WaitGroup, zone, prefix string, port uint16) {
+
+	defer (*w).Done()
 
 	if prefix == "" {
 		queryTLSA(zone, "http", port, "tcp", zone)
@@ -349,7 +357,7 @@ func queryWebTLSA(zone, prefix string, port uint16) {
 
 /*
  * queryTLSA() - send DNS TLSA query, populate ResponseInfo structure,
- *               and write it to the results channel. The results 
+ *               and write it to the results channel. The results
  *               channel is read by the main goroutine in runBatchFile().
  */
 
@@ -389,19 +397,23 @@ func queryTLSA(zone, service string, port uint16, proto, base string) {
 }
 
 /*
- * queryZone() - dispatch all TLSA queries for given zone. Releases token
- *               and decrements wg counter after completion.
+ * queryZone() - dispatch all TLSA queries for given zone in parallel.
+ *               Releases token for main loop's concurrency limit and
+ *               decrements wg counter after completion.
  */
 
 func queryZone(zone string) {
 
 	defer wg.Done()
+	var wg2 sync.WaitGroup
 
-	queryWebTLSA(zone, "", 443)
-	queryWebTLSA(zone, "www", 443)
-	queryMailTLSA(zone)
-	queryXmppTLSA(zone)
-	queryWildCardTLSA(zone)
+	wg2.Add(5)
+	go queryWebTLSA(&wg2, zone, "", 443)
+	go queryWebTLSA(&wg2, zone, "www", 443)
+	go queryMailTLSA(&wg2, zone)
+	go queryXmppTLSA(&wg2, zone)
+	go queryWildCardTLSA(&wg2, zone)
+	wg2.Wait()
 
 	<-tokens // Release token.
 
@@ -411,7 +423,7 @@ func queryZone(zone string) {
  * runBatchFile() - process batch file of zones, obtain token (blocking
  *                  if channel is full), then fire off concurrent goroutines
  *                  to dispatch TLSA queries for each zone, incrementing the
- *                  wg sync counter before each goroutine invocation. The 
+ *                  wg sync counter before each goroutine invocation. The
  *                  queryZone() goroutine releases tokens and decrements the
  *                  wg counter as it completes.
  */

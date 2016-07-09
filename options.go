@@ -20,23 +20,23 @@ type EdnsoptStruct struct {
 //
 
 type OptionsStruct struct {
-	port         int
-	tcp          bool
-	itimeout     time.Duration
-	tcptimeout   time.Duration
-	retries      int
-	ignore       bool
-	adflag       bool
-	cdflag       bool
-	edns         bool
-	edns_flags   uint16
-	edns_opt     []*EdnsoptStruct
-	dnssec       bool
-	bufsize      uint16
-	servers      []string
-	tsig         string
-	batchfile    string
-	dbfile       string
+	port       int
+	tcp        bool
+	itimeout   time.Duration
+	tcptimeout time.Duration
+	retries    int
+	ignore     bool
+	adflag     bool
+	cdflag     bool
+	edns       bool
+	edns_flags uint16
+	edns_opt   []*EdnsoptStruct
+	dnssec     bool
+	bufsize    uint16
+	servers    []string
+	tsig       string
+	batchfile  string
+	dbfile     string
 }
 
 var Options OptionsStruct = OptionsStruct{port: 53, tcp: false,
