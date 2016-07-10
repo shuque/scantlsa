@@ -83,10 +83,15 @@ print(FMT1 % ("Total# Zones in infile", infile_zonecount))
 print(FMT2 % ("#Distinct TLSA Zones", zonecount,
               zonecount * 100.0/infile_zonecount))
 
-## Number of <Zone, TLSA records> (total)
+## Number of <Zone, TLSA RR>
 stmt = "select count(*) from tlsa limit 1"
-cnt_zone_tlsa, = c.execute(stmt).fetchone()
-print(FMT1 % ("Total #Zone,TLSA records", cnt_zone_tlsa))
+cnt_zone_tlsa_rr, = c.execute(stmt).fetchone()
+print(FMT1 % ("Total #<Zone,TLSA RR>", cnt_zone_tlsa_rr))
+
+## Number of <Zone, TLSA RRset>
+stmt = "select count(*) from (select distinct zone, port, proto, name from tlsa)"
+cnt_zone_tlsa_rrset, = c.execute(stmt).fetchone()
+print(FMT1 % ("Total #<Zone,TLSA RRset>", cnt_zone_tlsa_rrset))
 
 ## Total number of distinct <Zone, service> pairs
 stmt = "select count(*) from (select distinct zone, service from tlsa)"
@@ -111,29 +116,29 @@ print(FMT1 % ("Total #distinct ports", port_count))
 
 print('')
 
-## Count of distinct services by all TLSA records
+## Count of services across distinct <Zone, TLSA> records
 stmt = "select count(service), service from tlsa group by service order by count(service) desc"
-print("Count of services by all TLSA records:")
+print("Count of services across distinct <Zone, TLSA records>:")
 for cnt, svc in c.execute(stmt).fetchall():
     print("  %7d %s" % (cnt, svc))
 
-## Count of distinct services by zones
+## Count of services across distinct zones
 stmt = "select count(service), service from (select distinct zone, service from tlsa) group by service order by count(service) desc"
-print("Count of distinct services by zones:")
+print("Count of services across distinct TLSA zones; %zones with the service:")
 for cnt, svc in c.execute(stmt).fetchall():
-    print("  %7d %s" % (cnt, svc))
+    print("  %7d %s (%5.1f%%)" % (cnt, svc, percentage(cnt, zonecount)))
 
-## Count of distinct services by <Zone, RRset> tuples
+## Count of services across distinct <Zone, RRset> tuples
 stmt = "select count(service), service from (select distinct zone, service, port, proto, name from tlsa) group by service order by count(service) desc;"
-print("Count of distinct services by <Zone, RRset> tuples:")
+print("Count of services across distinct <Zone, RRset> tuples:")
 for cnt, svc in c.execute(stmt).fetchall():
-    print("  %7d %s" % (cnt, svc))
+    print("  %7d %s (%5.1f%%)" % (cnt, svc, percentage(cnt, cnt_zone_tlsa_rrset)))
 
-## Count of distinct services by <RRset> tuples
+## Count of services across distinct RRsets
 stmt = "select count(service), service from (select distinct service, port, proto, name from tlsa) group by service order by count(service) desc;"
-print("Count of distinct services by <RRset> tuples:")
+print("Count of services across distinct RRsets:")
 for cnt, svc in c.execute(stmt).fetchall():
-    print("  %7d %s" % (cnt, svc))
+    print("  %7d %s (%5.1f%%)" % (cnt, svc, percentage(cnt, cnt_tlsa_rrset)))
 
 ## List of distinct ports
 stmt = "select distinct port from tlsa order by port"
@@ -144,24 +149,6 @@ for row in c.execute(stmt).fetchall():
         print("  %7d (wildcard; not a real port)" % port)
     else:
         print("  %7d" % port)
-
-## Top 20 RRsets and their counts
-stmt = "select count(*), port, proto, name from tlsa group by port, proto, name order by count(*) desc limit 20"
-print("Top 20 RRsets and their counts:")
-for cnt, port, proto, name in c.execute(stmt).fetchall():
-    print("  %7d _%d._%s.%s" % (cnt, port, proto, name))
-
-## Top 20 RRs (not RRsets) and their counts 
-stmt = "select count(*), port, proto, name from tlsa group by port, proto, name, usage, selector, mtype, certdata order by count(*) desc limit 20"
-print("Top 20 RRs (not RRsets) and their counts:")
-for cnt, port, proto, name in c.execute(stmt).fetchall():
-    print("  %7d _%d._%s.%s <.. rdata>" % (cnt, port, proto, name))
-
-## Top 20 RRsets to which zones point to (and how many zones)
-stmt = 'select count(owner), owner from (select distinct zone, printf("_%d._%s.%s", port, proto, name) as owner from tlsa) group by owner order by count(owner) desc limit 20'
-print("Top 20 TLSA RRsets by #zones which point to them:")
-for cnt, owner in c.execute(stmt).fetchall():
-    print("  %7d %s" % (cnt, owner))
 
 ## TLSA Certificate Usage parameter counts across unique RRs
 stmt = "select count(*), usage from (select distinct port, proto, name, usage, selector, mtype, certdata from tlsa) group by usage order by count(*) desc"
@@ -186,6 +173,25 @@ for cnt, mtype in c.execute(stmt).fetchall():
     print("  %7d %s (%d) %5.1f%%" %
           (cnt, TLSA_MTYPE.get(mtype, "UNKNOWN"), mtype,
            percentage(cnt, cnt_tlsa_rr)))
+
+## Top 25 RRsets and their counts
+stmt = "select count(*), port, proto, name from tlsa group by port, proto, name order by count(*) desc limit 25"
+print("Top 25 RRsets and their counts:")
+for cnt, port, proto, name in c.execute(stmt).fetchall():
+    print("  %7d _%d._%s.%s" % (cnt, port, proto, name))
+
+## Top 25 RRs (not RRsets) and their counts
+stmt = "select count(*), port, proto, name from tlsa group by port, proto, name, usage, selector, mtype, certdata order by count(*) desc limit 25"
+print("Top 25 RRs (not RRsets) and their counts:")
+for cnt, port, proto, name in c.execute(stmt).fetchall():
+    print("  %7d _%d._%s.%s <.. rdata>" % (cnt, port, proto, name))
+
+## Top 25 RRsets to which zones point to (and how many zones)
+stmt = 'select count(owner), owner from (select distinct zone, printf("_%d._%s.%s", port, proto, name) as owner from tlsa) group by owner order by count(owner) desc limit 25'
+print("Top 25 TLSA RRsets by #zones which point to them:")
+for cnt, owner in c.execute(stmt).fetchall():
+    print("  %7d %s" % (cnt, owner))
+
 
 ## TODO: wildcard analysis
 
