@@ -97,6 +97,12 @@ stmt = "select count(*) from (select distinct port, proto, name, usage, selector
 cnt, = c.execute(stmt).fetchone()
 print(FMT1 % ("#distinct TLSA RRs", cnt))
 
+## Number of distinct ports
+stmt = "select count(distinct port) from tlsa limit 1"
+port_count, = c.execute(stmt).fetchone()
+print(FMT1 % ("Total #distinct ports", port_count))
+
+
 print('')
 
 ## Count of distinct services by all TLSA records
@@ -113,20 +119,15 @@ for cnt, svc in c.execute(stmt).fetchall():
 
 ## Count of distinct services by <Zone, RRset> tuples
 stmt = "select count(service), service from (select distinct zone, service, port, proto, name from tlsa) group by service order by count(service) desc;"
-print("Count of distinct services by <Zone, RRset> tuples")
+print("Count of distinct services by <Zone, RRset> tuples:")
 for cnt, svc in c.execute(stmt).fetchall():
     print("  %7d %s" % (cnt, svc))
 
 ## Count of distinct services by <RRset> tuples
 stmt = "select count(service), service from (select distinct service, port, proto, name from tlsa) group by service order by count(service) desc;"
-print("Count of distinct services by <RRset> tuples")
+print("Count of distinct services by <RRset> tuples:")
 for cnt, svc in c.execute(stmt).fetchall():
     print("  %7d %s" % (cnt, svc))
-
-## Number of distinct ports
-stmt = "select count(distinct port) from tlsa limit 1"
-port_count, = c.execute(stmt).fetchone()
-print("Total #distinct ports:  %7d" % port_count)
 
 ## List of distinct ports
 stmt = "select distinct port from tlsa order by port"
@@ -140,37 +141,37 @@ for row in c.execute(stmt).fetchall():
 
 ## Top 20 RRsets and their counts
 stmt = "select count(*), port, proto, name from tlsa group by port, proto, name order by count(*) desc limit 20"
-print("Top 20 RRsets and their counts")
+print("Top 20 RRsets and their counts:")
 for cnt, port, proto, name in c.execute(stmt).fetchall():
     print("  %7d _%d._%s.%s" % (cnt, port, proto, name))
 
 ## Top 20 RRs (not RRsets) and their counts 
 stmt = "select count(*), port, proto, name from tlsa group by port, proto, name, usage, selector, mtype, certdata order by count(*) desc limit 20"
-print("Top 20 RRs (not RRsets) and their counts")
+print("Top 20 RRs (not RRsets) and their counts:")
 for cnt, port, proto, name in c.execute(stmt).fetchall():
     print("  %7d _%d._%s.%s <.. rdata>" % (cnt, port, proto, name))
 
 ## Top 20 RRsets to which zones point to (and how many zones)
 stmt = 'select count(owner), owner from (select distinct zone, printf("_%d._%s.%s", port, proto, name) as owner from tlsa) group by owner order by count(owner) desc limit 20'
-print("Top 20 TLSA RRsets by #zones which point to them")
+print("Top 20 TLSA RRsets by #zones which point to them:")
 for cnt, owner in c.execute(stmt).fetchall():
     print("  %7d %s" % (cnt, owner))
 
-## TLSA Certificate Usage parameter by RRsets
+## TLSA Certificate Usage parameter counts across unique RRs
 stmt = "select count(*), usage from (select distinct port, proto, name, usage, selector, mtype, certdata from tlsa) group by usage order by count(*) desc"
-print("TLSA Certificate Usage parameter counts by unique RRsets")
+print("TLSA Certificate Usage parameter counts across unique RRs:")
 for cnt, usage in c.execute(stmt).fetchall():
     print("  %7d Usage=%d (%s)" % (cnt, usage, TLSA_USAGE.get(usage, "UNKNOWN")))
 
-## TLSA Selector parameter by RRsets
+## TLSA Selector parameter counts across unique RRs
 stmt = "select count(*), selector from (select distinct port, proto, name, usage, selector, mtype, certdata from tlsa) group by selector order by count(*) desc"
-print("TLSA Selector parameter counts by unique RRsets")
+print("TLSA Certificate Usage parameter counts across unique RRs:")
 for cnt, selector in c.execute(stmt).fetchall():
     print("  %7d Usage=%d (%s)" % (cnt, usage, TLSA_SELECTOR.get(selector, "UNKNOWN")))
 
-## TLSA Matching Type parameter by RRsets
+## TLSA Matching Type parameter counts across unique RRs
 stmt = "select count(*), mtype from (select distinct port, proto, name, usage, selector, mtype, certdata from tlsa) group by mtype order by count(*) desc"
-print("TLSA Matching Type parameter counts by unique RRsets")
+print("TLSA Matching Type parameter counts across unique RRs:")
 for cnt, mtype in c.execute(stmt).fetchall():
     print("  %7d MatchingType=%d (%s)" % (cnt, mtype, TLSA_MTYPE.get(mtype, "UNKNOWN")))
 
