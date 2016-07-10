@@ -174,21 +174,21 @@ for cnt, mtype in c.execute(stmt).fetchall():
           (cnt, TLSA_MTYPE.get(mtype, "UNKNOWN"), mtype,
            percentage(cnt, cnt_tlsa_rr)))
 
-## Top 25 RRsets and their counts
-stmt = "select count(*), port, proto, name from tlsa group by port, proto, name order by count(*) desc limit 25"
-print("Top 25 RRsets and their counts:")
+## Top 50 RRsets and their counts
+stmt = "select count(*), port, proto, name from tlsa group by port, proto, name order by count(*) desc limit 50"
+print("Top 50 RRsets and their counts:")
 for cnt, port, proto, name in c.execute(stmt).fetchall():
     print("  %7d _%d._%s.%s" % (cnt, port, proto, name))
 
-## Top 25 RRs (not RRsets) and their counts
-stmt = "select count(*), port, proto, name from tlsa group by port, proto, name, usage, selector, mtype, certdata order by count(*) desc limit 25"
-print("Top 25 RRs (not RRsets) and their counts:")
-for cnt, port, proto, name in c.execute(stmt).fetchall():
-    print("  %7d _%d._%s.%s <.. rdata>" % (cnt, port, proto, name))
+## Top 50 RRs and their counts
+stmt = "select count(*), port, proto, name, usage, selector, mtype, certdata from tlsa group by port, proto, name, usage, selector, mtype, certdata order by count(*) desc limit 50"
+print("Top 50 RRs (not RRsets) and their counts:")
+for cnt, port, proto, name, usage, selector, mtype, certdata in c.execute(stmt).fetchall():
+    print("  %7d _%d._%s.%s %d %d %d %s..." % (cnt, port, proto, name, usage, selector, mtype, certdata[0:12]))
 
-## Top 25 RRsets to which zones point to (and how many zones)
-stmt = 'select count(owner), owner from (select distinct zone, printf("_%d._%s.%s", port, proto, name) as owner from tlsa) group by owner order by count(owner) desc limit 25'
-print("Top 25 TLSA RRsets by #zones which point to them:")
+## Top 50 RRsets to which zones point to (and how many zones)
+stmt = 'select count(owner), owner from (select distinct zone, printf("_%d._%s.%s", port, proto, name) as owner from tlsa) group by owner order by count(owner) desc limit 50'
+print("Top 50 TLSA RRsets by #zones which point to them:")
 for cnt, owner in c.execute(stmt).fetchall():
     print("  %7d %s" % (cnt, owner))
 
@@ -197,5 +197,5 @@ for cnt, owner in c.execute(stmt).fetchall():
 
 ## SMTP specific analysis, e.g. how many MX RRsets involved, etc.
 
+c.close()
 conn.close()
-
