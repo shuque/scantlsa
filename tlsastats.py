@@ -31,6 +31,22 @@ TABLE tlsa
 
 import os, sys, sqlite3, time
 
+TLSA_USAGE = {
+    0: "PKIX-TA", 
+    1: "PKIX-EE",
+    2: "DANE-TA",
+    3: "DANE-EE"
+}
+TLSA_SELECTOR = {
+    0: "Cert", 
+    1: "SPKI"
+}
+TLSA_MTYPE = {
+    0: "Full", 
+    1: "SHA2-256",
+    2: "SHA2-512"
+}
+
 conn = sqlite3.connect(sys.argv[1])
 c = conn.cursor()
 
@@ -140,7 +156,24 @@ print("Top 20 TLSA RRsets by #zones which point to them")
 for cnt, owner in c.execute(stmt).fetchall():
     print("  %7d %s" % (cnt, owner))
 
-## TODO: statistics on TLSA parameters (usage, selector, mtype ..)
+## TLSA Certificate Usage parameter by RRsets
+stmt = "select count(*), usage from (select distinct port, proto, name, usage, selector, mtype, certdata from tlsa) group by usage order by count(*) desc"
+print("TLSA Certificate Usage parameter counts by unique RRsets")
+for cnt, usage in c.execute(stmt).fetchall():
+    print("  %7d Usage=%d (%s)" % (cnt, usage, TLSA_USAGE.get(usage, "UNKNOWN")))
+
+## TLSA Selector parameter by RRsets
+stmt = "select count(*), selector from (select distinct port, proto, name, usage, selector, mtype, certdata from tlsa) group by selector order by count(*) desc"
+print("TLSA Selector parameter counts by unique RRsets")
+for cnt, selector in c.execute(stmt).fetchall():
+    print("  %7d Usage=%d (%s)" % (cnt, usage, TLSA_SELECTOR.get(selector, "UNKNOWN")))
+
+## TLSA Matching Type parameter by RRsets
+stmt = "select count(*), mtype from (select distinct port, proto, name, usage, selector, mtype, certdata from tlsa) group by mtype order by count(*) desc"
+print("TLSA Matching Type parameter counts by unique RRsets")
+for cnt, mtype in c.execute(stmt).fetchall():
+    print("  %7d MatchingType=%d (%s)" % (cnt, mtype, TLSA_MTYPE.get(mtype, "UNKNOWN")))
+
 
 ## TODO: wildcard analysis
 
