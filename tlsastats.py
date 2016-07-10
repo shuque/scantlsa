@@ -47,6 +47,12 @@ TLSA_MTYPE = {
     2: "SHA2-512"
 }
 
+
+def percentage(a, b):
+    """what percentage of b is a?"""
+    return (a * 100.0) / b
+
+
 conn = sqlite3.connect(sys.argv[1])
 c = conn.cursor()
 
@@ -77,25 +83,25 @@ print(FMT1 % ("Total# Zones in infile", infile_zonecount))
 print(FMT2 % ("#Distinct TLSA Zones", zonecount,
               zonecount * 100.0/infile_zonecount))
 
-## Number of TLSA records (total)
+## Number of <Zone, TLSA records> (total)
 stmt = "select count(*) from tlsa limit 1"
-tlsa_count, = c.execute(stmt).fetchone()
-print(FMT1 % ("Total #Zone,TLSA records", tlsa_count))
+cnt_zone_tlsa, = c.execute(stmt).fetchone()
+print(FMT1 % ("Total #Zone,TLSA records", cnt_zone_tlsa))
 
 ## Total number of distinct <Zone, service> pairs
 stmt = "select count(*) from (select distinct zone, service from tlsa)"
-cnt, = c.execute(stmt).fetchone()
-print(FMT1 % ("#distinct <Zone, service>", cnt))
+cnt_zone_service, = c.execute(stmt).fetchone()
+print(FMT1 % ("#distinct <Zone, service>", cnt_zone_service))
 
 ## Total number of distinct TLSA RRsets
 stmt = "select count(*) from (select distinct port, proto, name from tlsa)"
-cnt, = c.execute(stmt).fetchone()
-print(FMT1 % ("#distinct TLSA RRsets", cnt))
+cnt_tlsa_rrset, = c.execute(stmt).fetchone()
+print(FMT1 % ("#distinct TLSA RRsets", cnt_tlsa_rrset))
 
 ## Total number of distinct TLSA RRs
 stmt = "select count(*) from (select distinct port, proto, name, usage, selector, mtype, certdata from tlsa)"
-cnt, = c.execute(stmt).fetchone()
-print(FMT1 % ("#distinct TLSA RRs", cnt))
+cnt_tlsa_rr, = c.execute(stmt).fetchone()
+print(FMT1 % ("#distinct TLSA RRs", cnt_tlsa_rr))
 
 ## Number of distinct ports
 stmt = "select count(distinct port) from tlsa limit 1"
@@ -161,20 +167,25 @@ for cnt, owner in c.execute(stmt).fetchall():
 stmt = "select count(*), usage from (select distinct port, proto, name, usage, selector, mtype, certdata from tlsa) group by usage order by count(*) desc"
 print("TLSA Certificate Usage parameter counts across unique RRs:")
 for cnt, usage in c.execute(stmt).fetchall():
-    print("  %7d Usage=%d (%s)" % (cnt, usage, TLSA_USAGE.get(usage, "UNKNOWN")))
+    print("  %7d %s (%d) %5.1f%%" %
+          (cnt, TLSA_USAGE.get(usage, "UNKNOWN"), usage,
+           percentage(cnt, cnt_tlsa_rr)))
 
 ## TLSA Selector parameter counts across unique RRs
 stmt = "select count(*), selector from (select distinct port, proto, name, usage, selector, mtype, certdata from tlsa) group by selector order by count(*) desc"
 print("TLSA Certificate Usage parameter counts across unique RRs:")
 for cnt, selector in c.execute(stmt).fetchall():
-    print("  %7d Usage=%d (%s)" % (cnt, usage, TLSA_SELECTOR.get(selector, "UNKNOWN")))
+    print("  %7d %s (%d) %5.1f%%" %
+          (cnt, TLSA_SELECTOR.get(selector, "UNKNOWN"), selector,
+           percentage(cnt, cnt_tlsa_rr)))
 
 ## TLSA Matching Type parameter counts across unique RRs
 stmt = "select count(*), mtype from (select distinct port, proto, name, usage, selector, mtype, certdata from tlsa) group by mtype order by count(*) desc"
 print("TLSA Matching Type parameter counts across unique RRs:")
 for cnt, mtype in c.execute(stmt).fetchall():
-    print("  %7d MatchingType=%d (%s)" % (cnt, mtype, TLSA_MTYPE.get(mtype, "UNKNOWN")))
-
+    print("  %7d %s (%d) %5.1f%%" %
+          (cnt, TLSA_MTYPE.get(mtype, "UNKNOWN"), mtype,
+           percentage(cnt, cnt_tlsa_rr)))
 
 ## TODO: wildcard analysis
 
