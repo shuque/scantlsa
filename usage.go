@@ -23,11 +23,12 @@ Supported Options:
   +tcp                 Use TCP as transport (default is UDP)
   +ignore              Ignore truncation, i.e. don't retry with TCP
   +retry=N             Set number of tries for UDP queries (default 3)
-  +time=N              Set timeout (default TCP 5s, UDP 2s + exp backoff)
+  +time=N              Set timeout (default is 3s for UDP, 5s for TCP)
   +dnssec              Set DNSSEC-OK bit
   +bufsize=N           Use EDNS0 UDP payload size of N
   +ednsflags=N         Set EDNS flags field to N
   +ednsopt=###[:value] Set generic EDNS option
+  +nocreate            Don't create the database; assume it exists
   +parallel=N          Use N concurrent queries at a time in batchfile mode
 `)
 	os.Exit(1)

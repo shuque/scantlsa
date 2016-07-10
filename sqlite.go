@@ -62,23 +62,27 @@ CREATE UNIQUE INDEX if not exists dnssec_uniq ON dnssec (zone, flags, proto, alg
 `
 
 /*
- * createDB() - create sqlite3 database to hold TLSA scan results
+ * initDB() - create sqlite3 database to hold TLSA scan results
  */
 
-func createDB(dbname string) (db *sql.DB, stmt *sql.Stmt) {
+func initDB(dbname string) (db *sql.DB, stmt *sql.Stmt) {
 
-	os.Remove(dbname)
-	os.Remove(dbname + "-journal")
+	if !Options.nocreate {
+		os.Remove(dbname)
+		os.Remove(dbname + "-journal")
+	}
 
 	db, err := sql.Open("sqlite3", dbname)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	sqlStmt := SCHEMA_INFO + SCHEMA_TLSA + INDEX_TLSA
-	_, err = db.Exec(sqlStmt)
-	if err != nil {
-		log.Fatal("%q: %s\n", err, sqlStmt)
+	if !Options.nocreate {
+		sqlStmt := SCHEMA_INFO + SCHEMA_TLSA + INDEX_TLSA
+		_, err = db.Exec(sqlStmt)
+		if err != nil {
+			log.Fatal("%q: %s\n", err, sqlStmt)
+		}
 	}
 
 	stmt, err = db.Prepare("insert into tlsa values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")

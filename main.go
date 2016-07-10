@@ -363,14 +363,14 @@ func queryMailTLSA(w *sync.WaitGroup, zone string) {
  * queryWebTLSA()
  */
 
-func queryWebTLSA(w *sync.WaitGroup, zone, prefix string, port uint16) {
+func queryWebTLSA(w *sync.WaitGroup, zone, prefix string) {
 
 	defer (*w).Done()
 
 	if prefix == "" {
-		queryTLSA(zone, "http", port, "tcp", zone)
+		queryTLSA(zone, "http", 443, "tcp", zone)
 	} else {
-		queryTLSA(zone, "http", port, "tcp", prefix+"."+zone)
+		queryTLSA(zone, "http", 443, "tcp", prefix+"."+zone)
 	}
 	return
 }
@@ -428,8 +428,8 @@ func queryZone(zone string) {
 	var wg2 sync.WaitGroup
 
 	wg2.Add(7)
-	go queryWebTLSA(&wg2, zone, "", 443)
-	go queryWebTLSA(&wg2, zone, "www", 443)
+	go queryWebTLSA(&wg2, zone, "")
+	go queryWebTLSA(&wg2, zone, "www")
 	go queryMailTLSA(&wg2, zone)
 	go queryXmppServerTLSA(&wg2, zone)
 	go queryXmppClientTLSA(&wg2, zone)
@@ -525,9 +525,9 @@ func main() {
 		Options.servers = Options.servers[0:MaxServers]
 	}
 
-	db, stmt := createDB(Options.dbfile)
+	db, stmt := initDB(Options.dbfile)
 	if db == nil {
-		log.Fatalf("failed to create sqlite3 database %s.\n", Options.dbfile)
+		log.Fatalf("failed to initialize database %s.\n", Options.dbfile)
 	}
 	defer db.Close()
 	defer stmt.Close()
@@ -541,7 +541,9 @@ func main() {
 	runBatchFile(Options.batchfile, db, stmt)
 	elapsedTime := time.Since(t0)
 	fmt.Printf("\nElapsed time: %s\n", elapsedTime.String())
-	_ = recordMetaInfo(db, t0, elapsedTime)
+	if !Options.nocreate {
+		_ = recordMetaInfo(db, t0, elapsedTime)
+	}
 
 	return
 

@@ -37,6 +37,7 @@ type OptionsStruct struct {
 	tsig       string
 	batchfile  string
 	dbfile     string
+	nocreate   bool
 }
 
 var Options OptionsStruct = OptionsStruct{port: 53, tcp: false,
@@ -68,6 +69,8 @@ FORLOOP:
 		case arg == "+dnssec":
 			Options.dnssec = true
 			Options.edns = true
+		case arg == "+nocreate":
+			Options.nocreate = true
 		case strings.HasPrefix(arg, "@"):
 			Options.servers = []string{arg[1:]}
 		case strings.HasPrefix(arg, "-p"):
