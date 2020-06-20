@@ -3,11 +3,12 @@ package main
 import (
 	"database/sql"
 	"fmt"
-	_ "github.com/mattn/go-sqlite3"
-	"github.com/miekg/dns"
 	"log"
 	"os"
 	"time"
+
+	_ "github.com/mattn/go-sqlite3"
+	"github.com/miekg/dns"
 )
 
 /*
@@ -81,7 +82,7 @@ func initDB(dbname string) (db *sql.DB, stmt *sql.Stmt) {
 		sqlStmt := SCHEMA_INFO + SCHEMA_TLSA + INDEX_TLSA
 		_, err = db.Exec(sqlStmt)
 		if err != nil {
-			log.Fatal("%q: %s\n", err, sqlStmt)
+			log.Fatalf("%s: %s\n", err, sqlStmt)
 		}
 	}
 

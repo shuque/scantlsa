@@ -197,5 +197,7 @@ for cnt, owner in c.execute(stmt).fetchall():
 
 ## SMTP specific analysis, e.g. how many MX RRsets involved, etc.
 
+### Check authenticated status of TLSA records.
+
 c.close()
 conn.close()

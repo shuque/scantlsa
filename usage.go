@@ -14,7 +14,7 @@ func usage() {
 	fmt.Printf("Usage: %s [<options>] <batchfile> <dbfile>\n", Progname)
 	fmt.Printf("\n<batchfile> is a file containing a list of DNS zones, one per line.\n")
 	fmt.Printf("<dbfile> is a sqlite3 database file to write results to.\n")
-	fmt.Println(`
+	fmt.Printf(`
 Supported Options:
   -h                   Print this usage string and exit
   -v                   Print program version and exit

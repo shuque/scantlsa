@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"fmt"
-	"github.com/miekg/dns"
 	"log"
 	"net"
 	"os"
@@ -14,6 +13,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/miekg/dns"
 )
 
 var Version string = "0.20"
@@ -127,9 +128,8 @@ func makeOptRR() *dns.OPT {
 func addressString(addr string, port int) string {
 	if strings.Index(addr, ":") == -1 {
 		return addr + ":" + strconv.Itoa(port)
-	} else {
-		return "[" + addr + "]" + ":" + strconv.Itoa(port)
 	}
+	return "[" + addr + "]" + ":" + strconv.Itoa(port)
 }
 
 /*
@@ -401,7 +401,7 @@ func queryTLSA(zone, service string, port uint16, proto, base string) {
 	r.qname, r.qtype, r.qclass = qname, "TLSA", "IN"
 
 	response, server, rtt, err := doQuery(qname, "TLSA", "IN", false)
-	if err == dns.ErrTruncated {
+	if err == nil && response.MsgHdr.Truncated {
 		r.truncated = true
 	}
 	if err != nil && !strings.Contains(err.Error(), "i/o timeout") {
@@ -495,10 +495,10 @@ func realPath(filename string) string {
 
 	if path.IsAbs(filename) {
 		return filename
-	} else {
-		cwd, _ := os.Getwd()
-		return path.Join(cwd, filename)
 	}
+
+	cwd, _ := os.Getwd()
+	return path.Join(cwd, filename)
 }
 
 /*
